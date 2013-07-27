@@ -40,7 +40,7 @@ var checkOptions=function (options, callback) {
 	}
 	if('string' === typeof options.search) {
 		try {
-			options.search = new RegExp(options.search.replace('*','.*'));
+			options.search = new RegExp(options.search.replace('*','.*'),'i');
 		} catch (e) {
 			throw Error('Given search couldn\'t be converted to a valid RegExp.')
 		}
@@ -63,14 +63,14 @@ PSLook.list = function (callback, options) {
 	  if(err) {
 		  callback(err)
 	  } else {
-	  	// cleaning up files
-	  	for(var i=0; i<files.length; i) {
+			// cleaning up files
+			for(var i=0; i<files.length; i) {
 				if(!/^[0-9]+$/.test(files[i])) {
 					files.splice(i,1);
 				} else {
 					i++;
 				}
-	  	}
+			}
 			// if the user just want the pid and do no search or search for PID
 			if(options.fields===PSLook.PID
 					&&(options.searchFields===PSLook.PID||!options.search)) {
