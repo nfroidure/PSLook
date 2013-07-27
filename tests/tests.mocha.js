@@ -3,7 +3,7 @@ var ps=require(__dirname+'/../pslook'),
 	assert=require('assert');
 
 // Tests
-describe('Listing system processes', function(){
+describe('Listing system processes', function() {
 
 	it("should return the same pids than the ps command", function(done) {
 		var psCommandPID;
@@ -103,4 +103,30 @@ describe('Listing system processes', function(){
 		}
 	});
 
+});
+
+describe('Reading a process', function() {
+
+	it("should return the same infos than those given to the exec method", function(done) {
+		var execPID;
+		var execOptions={
+			cwd: '/tmp',
+			env: {'TEST_ENV':'LO'}
+		};
+		var child = exec('/bin/cat', execOptions, function (err, stdout, stderr) {
+			if(!err) {
+				 throw Error('Execution should return an error');
+			}
+		});
+		execPID=child.pid;
+		// Reading the spawned process
+		ps.read(execPID,function(err, process) {
+			if(err) throw err;
+			assert.equal(process.cwd,execOptions.cwd);
+			assert.equal(process.env.TEST_ENV,execOptions.env.TEST_ENV);
+			child.kill();
+			done();
+		},{fields:ps.ENV|ps.CWD});
+	});
+	
 });
