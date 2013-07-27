@@ -6,68 +6,41 @@ var ps=require(__dirname+'/../pslook'),
 describe('Listing system processes', function() {
 
 	it("should return the same pids than the ps command", function(done) {
-		var psCommandPID;
 		var child = exec('ps hexao pid', function (err, stdout, stderr) {
 			if(err) throw err;
-			var psCommandPIDs=stdout.trim().split(/[\r\n\s\t]+/);
-			// Removing ps process pid
-			var index=psCommandPIDs.indexOf(psCommandPID.toString(10));
-			assert.equal(-1!==index,true);
-			psCommandPIDs.splice(index,1);
+			var psCommandPIDs=stdout.trim().split(/[\s\t]*[\r\n]+[\s\t]*/);
 			// Listing processes
 			ps.list(function(err, processes) {
 				if(err) throw err;
-				console.log(processes.length,psCommandPIDs.length);
-				assert.equal(Math.abs(processes.length-psCommandPIDs.length)<2,true);
+				// remove 2 processes for the ps process and the shel process
+				assert.equal(processes.length,psCommandPIDs.length-2);
+				// check if shared processes are corresponding to the pslook result
 				var sharedPIDs=0;
 				for(var i=processes.length-1; i>=0; i--) {
 					if(-1!==psCommandPIDs.indexOf(processes[i].pid.toString(10)))
 						sharedPIDs++;
 				}
 				assert.equal(sharedPIDs,processes.length);
+				child.kill();
 				done();
 			});
 		});
-		psCommandPID=child.pid;
 	});
 
-	it("should return the same pids than the ps command (search)", function(done) {
-		var psCommandPID;
-		var child = exec('ps hexao pid,command | grep node', function (err, stdout, stderr) {
-			if(err) throw err;
-			var psCommandPIDs=stdout.trim().split(/[\r\n]+/);
-			psCommandPIDs=psCommandPIDs.map(function(line) {
-				if(line) {
-					return line.trim().split(/[\s\t]+/)[0];
-				}
-				return line;
-			});
-			// Removing ps process pid
-			var index=psCommandPIDs.indexOf(psCommandPID.toString(10));
-			assert.equal(-1!==index,true);
-			psCommandPIDs.splice(index,1);
-			// Removing empty indexes
-			do {
-				index=psCommandPIDs.indexOf('');
-				if(-1!==index) {
-					psCommandPIDs.splice(index,1);
-				}
-			} while(-1!==index);
-			// Listing processes
-			ps.list(function(err, processes) {
-				console.log(processes.length,psCommandPIDs.length);
-				if(err) throw err;
-				assert.equal(Math.abs(processes.length-psCommandPIDs.length)<2,true);
-				var sharedPIDs=0;
-				for(var i=processes.length-1; i>=0; i--) {
-					if(-1!==psCommandPIDs.indexOf(processes[i].pid.toString(10)))
-						sharedPIDs++;
-				}
-				assert.equal(sharedPIDs,processes.length);
-				done();
-			},{search:'node'});
+	it("should return the pids of the process corresponding to the search", function(done) {
+		
+		var child = exec('read lukeimyourfather', function (err, stdout, stderr) {
+			if(!err) {
+				 throw Error('Execution should return an error');
+			}
 		});
-		psCommandPID=child.pid;
+		// Listing processes
+		ps.list(function(err, processes) {
+			if(err) throw err;
+			assert.equal(processes.length,1);
+			child.kill();
+			done();
+		},{search:'lukeimyourfather'});
 	});
 
 	it("should fail with bad fields flags", function(done) {
