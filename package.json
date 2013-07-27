@@ -1,7 +1,7 @@
 {
 	"name": "pslook",
 	"description": "Pslook is a NodeJS module retrieving processes informations on GNULinux systems without spawning a new process.",
-	"version": "0.1",
+	"version": "0.1.0",
 	"author": "Nicolas Froidure",
 	"repository": {
 		"type": "git",
@@ -15,7 +15,7 @@
 		"mocha": "~1.7.0"
 	},
 	"scripts": {
-		"test": "mocha test/*.mocha.js"
+		"test": "mocha tests/*.mocha.js"
 	},
 	"keywords": [
 		"ps",
