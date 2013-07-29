@@ -1,6 +1,7 @@
 var ps=require(__dirname+'/../pslook'),
 	exec = require('child_process').exec,
-	assert=require('assert');
+	assert = require('assert'),
+	fs = require('fs');
 
 // Tests
 describe('Listing system processes', function() {
@@ -27,7 +28,8 @@ describe('Listing system processes', function() {
 		});
 	});
 
-	it("should return the pids of the process corresponding to the search", function(done) {
+	it("should return the pids of the process corresponding to the search on cmd",
+			function(done) {
 		
 		var child = exec('read lukeimyourfather', function (err, stdout, stderr) {
 			if(!err) {
@@ -43,10 +45,32 @@ describe('Listing system processes', function() {
 		},{search:'lukeimyourfather'});
 	});
 
+	it("should return the pids of the process corresponding to the search on cwd",
+			function(done) {
+		fs.mkdirSync('/tmp/lukeimyourfather');
+		var child = exec('/bin/cat', {cwd:'/tmp/lukeimyourfather'}, function (err, stdout, stderr) {
+			if(!err) {
+				 throw Error('Execution should return an error');
+			}
+		});
+		// Listing processes
+		ps.list(function(err, processes) {
+			if(err) throw err;
+			child.kill();
+			fs.rmdirSync('/tmp/lukeimyourfather');
+			assert.equal(processes.length,2);
+			assert.equal(processes[0].cwd,'/tmp/lukeimyourfather');
+			assert.equal(processes[1].cwd,'/tmp/lukeimyourfather');
+			done();
+		},{fields:ps.CWD|ps.CMD,failOnNoAccess:false,
+			search:'lukeimyourfather',searchFields:ps.CWD});
+	});
+
 	it("should fail with bad fields flags", function(done) {
 		try {
 			// Listing processes
 			ps.list(function(err, processes) {
+				console.log(err);
 				if(err) throw err;
 			},{'fields':1664});
 		} catch(e) {

@@ -13,6 +13,7 @@ PSLook.STAT=8;
 PSLook.STATM=16;
 PSLook.ALL=PSLook.PID|PSLook.CWD|PSLook.CMD|PSLook.ENV
 	|PSLook.STAT|PSLook.STATM;
+PSLook.FULLSEARCH=PSLook.PID|PSLook.CWD|PSLook.CMD;
 
 // Set default options and check options integrity
 var checkOptions=function (options, callback) {
@@ -24,29 +25,31 @@ var checkOptions=function (options, callback) {
 	if(!options) {
 		options={};
 	}
+	// options
+	options.failOnNoAccess=options.failOnNoAccess|false;
 	// Testing fields
 	if(!options.fields) {
 		options.fields = PSLook.PID;
 	}
 	if(PSLook.ALL!==(options.fields|PSLook.ALL)) {
-		callback(Error('Some fields you asked seems to not exist.'))
+		throw Error('Some fields you asked seems to not exist.');
 	}
 	// Testing search
 	if('undefined' === typeof options.searchFields) {
 		options.searchFields = PSLook.CMD;
 	}
-	if(PSLook.ALL!==(options.searchFields|PSLook.ALL)) {
-		callback(Error('Some search fields you asked seems to not exist.'))
+	if(PSLook.FULLSEARCH!==(options.searchFields|PSLook.FULLSEARCH)) {
+		throw Error('Some search fields you asked seems to not exist.');
 	}
 	if('string' === typeof options.search) {
 		try {
 			options.search = new RegExp(options.search.replace('*','.*'),'i');
 		} catch (e) {
-			throw Error('Given search couldn\'t be converted to a valid RegExp.')
+			throw Error('Given search couldn\'t be converted to a valid RegExp.');
 		}
 	}
 	if(options.search&&!(options.search instanceof RegExp)) {
-		throw Error('Search must be a string or a RegExp isntance.');
+		throw Error('Search must be a string or a RegExp instance.');
 	}
 	if(!options.search) {
 		options.search = '';
@@ -127,22 +130,57 @@ PSLook.read = function (pid, callback, options) {
 		askedFields++;
 		fs.readFile('/proc/'+pid+'/cmdline', 'utf8', function (err, data) {
 			if(err) {
-				console.log(err);
-			 err&&callback(err);
+				if(options.failOnNoAccess||'EACCES'!==err.code) {
+					callback(err);
+				} else {
+					callback(null,null);
+				}
 			} else {
 				if(options.search&&(options.searchFields&PSLook.CMD)) {
 					if(options.search.test(data)) {
+						if(options.fields&PSLook.CMD) {
+							process.cmdline=data.split('\u0000');
+							if(''===process.cmdline[process.cmdline.length-1]) {
+								process.cmdline.pop();
+							}
+						}
 						dataFound();
 					} else {
 						callback(null,null);
 					}
-				}
-				if(options.fields&PSLook.CMD) {
+				} else if(options.fields&PSLook.CMD) {
 					process.cmdline=data.split('\u0000');
 					if(''===process.cmdline[process.cmdline.length-1]) {
 						process.cmdline.pop();
 					}
-				dataFound();
+					dataFound();
+				}
+			}
+		});
+	}
+	// Reading the process cwd
+	if(options.fields&PSLook.CWD||(options.search&&(options.searchFields&PSLook.CWD))) {
+		askedFields++;
+		fs.readlink('/proc/'+pid+'/cwd', function (err, data) {
+			if(err) {
+				if(options.failOnNoAccess||'EACCES'!==err.code) {
+					callback(err);
+				} else {
+					callback(null,null);
+				}
+			} else {
+				if(options.search&&(options.searchFields&PSLook.CWD)) {
+					if(options.search.test(data)) {
+						if(options.fields&PSLook.CWD) {
+							process.cwd=data;
+						}
+						dataFound();
+					} else {
+						callback(null,null);
+					}
+				} else if(options.fields&PSLook.CWD) {
+					process.cwd=data;
+					dataFound();
 				}
 			}
 		});
@@ -152,8 +190,11 @@ PSLook.read = function (pid, callback, options) {
 		askedFields++;
 		fs.readFile('/proc/'+pid+'/environ', 'utf8', function (err, data) {
 			if(err) {
-				console.log(err);
-			 err&&callback(err);
+				if(options.failOnNoAccess||'EACCES'!==err.code) {
+					callback(err);
+				} else {
+					callback(null,null);
+				}
 			} else {
 				process.env={};
 				data.split('\u0000').forEach(function(env){
@@ -167,23 +208,17 @@ PSLook.read = function (pid, callback, options) {
 			}
 		});
 	}
-	// Reading the process cwd
-	if(options.fields&PSLook.CWD) {
-		askedFields++;
-		fs.readlink('/proc/'+pid+'/cwd', function (err, data) {
-			if(err) {
-			 err&&callback(err);
-			} else {
-				process.cwd=data;
-				dataFound();
-			}
-		});
-	}
 	// Reading the process stat
 	if(options.fields&PSLook.STAT) {
 		askedFields++;
 		fs.readFile('/proc/'+pid+'/stat', 'utf8', function (err, data) {
-			if (err) throw err;
+			if (err) {
+				if(options.failOnNoAccess||'EACCES'!==err.code) {
+					callback(err);
+				} else {
+					callback(null,null);
+				}
+			}
 			var fields=data.split(/[\r\n\s]+/);
 			process.stat={
 				'command':fields[1],
@@ -237,7 +272,13 @@ PSLook.read = function (pid, callback, options) {
 	if(options.fields&PSLook.STATM) {
 		askedFields++;
 		fs.readFile('/proc/'+pid+'/statm', 'utf8', function (err, data) {
-			if (err) throw err;
+			if(err) {
+				if(options.failOnNoAccess||'EACCES'!==err.code) {
+					callback(err);
+				} else {
+					calback(null,null);
+				}
+			}
 			var fields=data.split(/[\r\n\s]+/);
 			process.statm={
 				'size': parseInt(fields[1],10),
