@@ -1,4 +1,4 @@
-PSLook
+PSLook [![Build Status](https://travis-ci.org/nfroidure/PSLook.png?branch=master)](https://travis-ci.org/nfroidure/PSLook)
 ============
 Pslook is a NodeJS module retrieving processes informations on GNULinux
  systems without spawning a new process and in a full non-blocking way
@@ -27,7 +27,7 @@ ps.list(function(err, process) {
 	if(err) throw err;
 	console.log(process.cwd);
 	console.log(process.statm.size);
-},{fields:PSLook.CWD|PSLook.STATM});
+},{fields:ps.CWD|ps.STATM});
 
 // Read every available informations for a process by its PID
 var ps=require('pslook');
